@@ -165,6 +165,7 @@ fregister_dict = {
 }
 """
 
+# retorna o tipo da instrucao J, R, I
 def get_type(instruction):
 
     if(instruction[0] == 'j' or instruction[0] == 'jal'):
@@ -176,6 +177,7 @@ def get_type(instruction):
     else:
         return 'r'
 
+# RETORNA O VALOR EM BINÁRIO DO REGISTRADOR
 def get_register(mask):
     
     if mask[0] == '$':
@@ -189,6 +191,7 @@ def get_register(mask):
 
     return reg
 
+# CONVERTE O CODIGO DE 32 BITS PARA HEXADECIMAL
 def bin_to_hex(bin_code):
 
     hex_code = '0x'
@@ -204,6 +207,7 @@ def bin_to_hex(bin_code):
 
     return hex_code
 
+# RETIRA CARACTERES NÃO DESEJADOS DAS INSTRUÇÕES ( , \n espaços)
 def normalize_inst(instruction):
     
     aux = []
@@ -215,6 +219,7 @@ def normalize_inst(instruction):
 
     return aux
 
+# GERA O HEX DA INSTRUÇÃO
 def get_hex(instruction):
 
     instruction = normalize_inst(instruction)
