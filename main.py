@@ -299,6 +299,8 @@ def get_hex(instruction):
 
 def main():
 
+    data_head()
+    text_head()
     assembled = []
     with open('test.txt', 'r') as file:
         for line in file:
