@@ -1,4 +1,6 @@
+from dis import Instruction
 import sys
+from turtle import pen
 #spec2 opcode = 011100
 special2_funct = {
     
@@ -39,7 +41,8 @@ type_r_funct = {
     'xor'   : '100110',
 
     # rever
-    'clo'   : '100001',
+
+    # 'clo'   : '100001',
     'div'   : '011010',
     'jr'    : '001000',
     'jalr'  : '001001',
@@ -50,7 +53,7 @@ type_r_funct = {
     'sra'   : '000011',
     'srav'  : '000111',
     'srav'  : '000111',
-    'teq'   : '110100',
+    # 'teq'   : '110100',
 }
 
 type_r_has_shamt = {
@@ -101,11 +104,13 @@ def get_type(instruction):
     if(instruction[0] == 'j' or instruction[0] == 'jal'):
         return 'j'
 
-    elif(instruction[-1].isdigit()):
+    elif(instruction[0] in type_i_opcodes):
         return 'i'
 
-    else:
+    elif(instruction[0] in type_r_funct):
         return 'r'
+    
+    else: return 'z'
 
 # RETORNA O VALOR EM BINÁRIO DO REGISTRADOR
 def get_register(mask):
@@ -124,7 +129,8 @@ def get_register(mask):
 # CONVERTE O CODIGO DE 32 BITS PARA HEXADECIMAL
 def bin_to_hex(bin_code):
 
-    hex_code = '0x'
+    # hex_code = '0x'
+    hex_code = ''
     
     aux = ''
     for i in range(32):
@@ -183,6 +189,74 @@ def check_exceptions(instruction):
                 sys.exit(1)
 
 
+def get_j_type_hex(instruction):
+
+    if instruction[0] == 'j': 
+        opcode = '000010' 
+
+    else:
+        opcode = '000011' 
+
+    address = instruction[1]
+
+    bin = opcode + address
+    
+    hex_code = bin_to_hex(bin)
+
+    return hex_code
+
+
+def is_offset(instruction):
+    return instruction[-1][-1] == ')'
+
+
+def get_i_type_hex(instruction) :
+
+    opcode = type_i_opcodes[instruction[0]]
+
+    rt = get_register(instruction[1])
+
+    if(is_offset(instruction)):
+
+        rs = instruction[2]
+
+        # pega o que está entre parêntese
+        # no caso: OFFSET(base) ->  base
+        rs = rs[ rs.find('(')+1 : rs.rfind(')')]
+        rs = get_register(rs)
+
+        # pega o que está antes do primeiro parêntese
+        # no caso: OFFSET(base) ->  OFFSET
+        imm = instruction[2][:instruction[2].find('(')]
+        imm = f'{int(imm):016b}'
+        
+
+    else:
+        rs = get_register(instruction[2])
+
+        imm = f'{int(instruction[3]):016b}'
+
+    bin = opcode + rs + rt + imm
+
+    hex_code = bin_to_hex(bin)
+
+    return hex_code
+
+def get_r_type_hex(instruction):
+
+    opcode = '000000'
+    rs = get_register(instruction[2])
+    rt = get_register(instruction[3])
+    rd = get_register(instruction[1])
+    shamt = '00000'
+    funct = type_r_funct[instruction[0]]
+
+    bin = opcode + rs + rt + rd + shamt + funct
+    
+    hex_code = bin_to_hex(bin)
+
+    return hex_code
+
 # GERA O HEX DA INSTRUÇÃO
 def get_hex(instruction):
 
@@ -190,61 +264,34 @@ def get_hex(instruction):
 
     type = get_type(instruction)
 
-    check_exceptions(instruction)
+    # check_exceptions(instruction)
 
     if type == 'j':
-
-        if instruction[0] == 'j': 
-            opcode = '000010' 
-
-        else:
-            opcode = '000011' 
-
-        address = instruction[1]
-
-        bin = opcode + address
-        
-        hex_code = bin_to_hex(bin)
-
+        return get_j_type_hex(instruction)
+       
     elif type == 'i':
-
-        opcode = type_i_opcodes[instruction[0]]
-        rs = get_register(instruction[1])
-        rt = get_register(instruction[2])
-        imm = f'{int(instruction[3]):016b}'
-
-        bin = opcode + rt + rs + imm
-
-        hex_code = bin_to_hex(bin)
-
+        return get_i_type_hex(instruction)
+        
     elif type == 'r':
 
-        opcode = '000000'
-        rs = get_register(instruction[2])
-        rt = get_register(instruction[3])
-        rd = get_register(instruction[1])
-        shamt = '00000'
-        funct = type_r_funct[instruction[0]]
-
-        bin = opcode + rs + rt + rd + shamt + funct
-        
-        hex_code = bin_to_hex(bin)
-
-    return hex_code
+        return get_r_type_hex(instruction)
+    
+    else: return 'ERROR'
 
 
 def main():
 
+    assembled = []
     with open('test.txt', 'r') as file:
+        for line in file:
 
-        line = file.readline() 
-        # line = file.readline() 
+            instruction = line.split(' ')
 
+            assembled.append( (get_hex(instruction)) )
 
-    print(line)
-    
-    instruction = line.split(' ')
+    output = open('output.txt', 'w')
 
-    print(get_hex(instruction))
+    for i in assembled:
+        output.write(i + '\n') 
 
 main()
