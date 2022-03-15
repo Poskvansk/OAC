@@ -13,7 +13,6 @@ special2_funct = {
 type_i_opcodes = {
 
     'addi'  :'001000',
-    'addi'  :'001000',
     'addiu' :'001001',
     'andi'  :'001100',
     'beq'   :'000100',
@@ -51,7 +50,6 @@ type_r_funct = {
     'movn'  : '001011',
     'mult'  : '011000',
     'sra'   : '000011',
-    'srav'  : '000111',
     'srav'  : '000111',
     # 'teq'   : '110100',
 }
@@ -95,6 +93,26 @@ register_mask_dict = {
     '$fp': 30,
     '$ra': 31
 }
+
+def data_head():
+    saida = open('example_saida_data.mif', 'w')
+    saida.write('DEPTH = 16384;\n')
+    saida.write('WIDTH = 32;\n')
+    saida.write('ADDRESS_RADIX = HEX;\n')
+    saida.write('DATA_RADIX = HEX;\n')
+    saida.write('CONTENT\n')
+    saida.write('BEGIN\n\n')
+    saida.close()
+
+def text_head():
+    saida = open('example_saida_text.mif', 'w')
+    saida.write('DEPTH = 4096;\n')
+    saida.write('WIDTH = 32;\n')
+    saida.write('ADDRESS_RADIX = HEX;\n')
+    saida.write('DATA_RADIX = HEX;\n')
+    saida.write('CONTENT\n')
+    saida.write('BEGIN\n')
+    saida.close()
 
 ###############################################################
 
