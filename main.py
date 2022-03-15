@@ -1,3 +1,4 @@
+import sys
 #spec2 opcode = 011100
 special2_funct = {
     
@@ -92,78 +93,7 @@ register_mask_dict = {
     '$ra': 31
 }
 
-""""
-register_dict = {
-
-    '$0'
-    '$1'
-    '$2'
-    '$3'
-    '$4'
-    '$5'
-    '$6'
-    '$7'
-    '$8'
-    '$9'
-    '$10'
-    '$11'
-    '$12'
-    '$13'
-    '$14'
-    '$15'
-    '$16'
-    '$17'
-    '$18'
-    '$19'
-    '$20'
-    '$21'
-    '$22'
-    '$23'
-    '$24'
-    '$25'
-    '$26'
-    '$27'
-    '$28'
-    '$29'
-    '$30'
-    '$31'
-}
-
-fregister_dict = {
-    '$f0': 0
-    '$f1': 1
-    '$f2': 2
-    '$f3': 3
-    '$f4': 4
-    '$f5': 5
-    '$f6': 6
-    '$f7': 7
-    '$f8': 8
-    '$f9': 9
-    '$f10': 10
-    '$f11': 11
-    '$f12': 12
-    '$f13': 13
-    '$f14': 14
-    '$f15': 15
-    '$f16': 16
-    '$f17': 17
-    '$f18': 18
-    '$f19': 19
-    '$f20': 20
-    '$f21': 21
-    '$f22': 2
-    '$f23': 
-    '$f24': 
-    '$f25': 
-    '$f26': 
-    '$f27': 
-    '$f28': 
-    '$f29': 
-    '$f30': 
-    '$f31': 
-}
-"""
+###############################################################
 
 # retorna o tipo da instrucao J, R, I
 def get_type(instruction):
@@ -187,7 +117,7 @@ def get_register(mask):
             reg = f'{reg:05b}'
 
         else:
-            reg = f'{int(mask[1::]):05b}'
+            reg = f'{int(mask[1:]):05b}'
 
     return reg
 
@@ -219,12 +149,48 @@ def normalize_inst(instruction):
 
     return aux
 
+# CHECA VALIDADE DA INSTRUÇÃO. CHECA SE ENCONTRA O TIPO DA INSTRUÇÃO E OS REGISTRADORES
+# CASO HAJA ERRO, ENCERRA A EXECUÇÃO DO PROGRAMA, LEVANTANDO UMA EXCERÇÃO
+def check_exceptions(instruction):
+
+    try:
+        not_r_type = not (instruction[0] in type_r_funct)
+        not_i_type = not (instruction[0] in type_i_opcodes)
+        not_j_type = not (instruction[0] == 'j' or instruction[0] == 'jal')
+
+        if not_r_type and not_i_type and not_j_type :
+            raise ValueError("Unknown Instruction: " + instruction[0])
+
+    except ValueError as e:
+        print(e)
+        sys.exit(1)
+
+    for reg in instruction[1:] :
+
+        if not reg in register_mask_dict:
+            try:
+                int(reg[1:])
+            except:
+                print("Register not found: " + reg)
+                sys.exit(1)
+
+            try:
+                if int(reg[1:]) < 0 or int(reg[1:]) > 31 :
+                    raise ValueError("Register out of index: " + reg)
+
+            except ValueError as e:
+                print(e)
+                sys.exit(1)
+
+
 # GERA O HEX DA INSTRUÇÃO
 def get_hex(instruction):
 
     instruction = normalize_inst(instruction)
 
     type = get_type(instruction)
+
+    check_exceptions(instruction)
 
     if type == 'j':
 
@@ -247,7 +213,7 @@ def get_hex(instruction):
         rt = get_register(instruction[2])
         imm = f'{int(instruction[3]):016b}'
 
-        bin = opcode + rs + rt + imm
+        bin = opcode + rt + rs + imm
 
         hex_code = bin_to_hex(bin)
 
