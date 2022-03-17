@@ -1,13 +1,26 @@
+from calendar import different_locale
 from dis import Instruction
 import sys
 from turtle import pen
-#spec2 opcode = 011100
+
+from cv2 import UMAT_AUTO_STEP
+
 special2_funct = {
     
     'clo'   : '100001',
     'madd'  : '000000',
     'mul'   : '000010',
     'msubu' : '000101',
+}
+
+cop1_funct = {
+
+    'add'   :'000000',
+    'sub'   :'000001',
+    'div'   :'000011',
+    'mul'   :'000010',
+    'c.eq'  :'000000',
+
 }
 
 type_i_opcodes = {
@@ -17,6 +30,7 @@ type_i_opcodes = {
     'andi'  :'001100',
     'beq'   :'000100',
     'bne'   :'000101',
+    'lb'    :'100000',
     'lw'    :'100011',
     'sw'    :'101011',
     'slti'  :'001010',
@@ -38,24 +52,6 @@ type_r_funct = {
     'subu'  : '100011',
     'or'    : '100101',
     'xor'   : '100110',
-
-    # rever
-
-    # 'clo'   : '100001',
-    'div'   : '011010',
-    'jr'    : '001000',
-    'jalr'  : '001001',
-    'mfhi'  : '010000',
-    'mflo'  : '010010',
-    'movn'  : '001011',
-    'mult'  : '011000',
-    'sra'   : '000011',
-    'srav'  : '000111',
-    # 'teq'   : '110100',
-}
-
-type_r_has_shamt = {
-
 }
 
 register_mask_dict = {
@@ -94,8 +90,9 @@ register_mask_dict = {
     '$ra': 31
 }
 
-def data_head():
-    saida = open('example_saida_data.mif', 'w')
+###############################################################
+def data_head(file):
+    saida = open(file, 'w')
     saida.write('DEPTH = 16384;\n')
     saida.write('WIDTH = 32;\n')
     saida.write('ADDRESS_RADIX = HEX;\n')
@@ -104,20 +101,67 @@ def data_head():
     saida.write('BEGIN\n\n')
     saida.close()
 
-def text_head():
-    saida = open('example_saida_text.mif', 'w')
+def text_head(file):
+    saida = open(file, 'w')
     saida.write('DEPTH = 4096;\n')
     saida.write('WIDTH = 32;\n')
     saida.write('ADDRESS_RADIX = HEX;\n')
     saida.write('DATA_RADIX = HEX;\n')
     saida.write('CONTENT\n')
-    saida.write('BEGIN\n')
+    saida.write('BEGIN\n\n')
     saida.close()
 
 ###############################################################
+# CHECA VALIDADE DA INSTRUÇÃO. CHECA SE ENCONTRA O TIPO DA INSTRUÇÃO E OS REGISTRADORES
+# CASO HAJA ERRO, ENCERRA A EXECUÇÃO DO PROGRAMA, LEVANTANDO UMA EXCERÃO
+def check_register(reg):
 
-# retorna o tipo da instrucao J, R, I
+    if not reg in register_mask_dict:
+        try:
+            if(reg.find('.')):
+                int(reg[2:])
+            else:
+                int(reg[1:])
+        except:
+            print("Register not found: " + reg)
+            sys.exit(1)
+
+        try:
+
+            if(reg.find('.')):
+                if int(reg[2:]) < 0 or int(reg[2:]) > 31 :
+                    raise ValueError("Register out of index: " + reg)
+            else:
+                if int(reg[1:]) < 0 or int(reg[1:]) > 31 :
+                    raise ValueError("Register out of index: " + reg)
+
+        except ValueError as e:
+            print(e)
+            sys.exit(1)
+
+    return
+
+def check_exceptions(instruction):
+
+    try:
+        not_r_type = not (instruction[0] in type_r_funct or instruction[0] in special_r_type)
+        not_i_type = not (instruction[0] in type_i_opcodes)
+        not_j_type = not (instruction[0] == 'j' or instruction[0] == 'jal')
+        not_sp2 = not (instruction[0] in special2_funct)
+
+        if not_r_type and not_i_type and not_j_type and not_sp2 :
+            raise ValueError("Unknown Instruction: " + instruction[0])
+
+    except ValueError as e:
+        print(e)
+        sys.exit(1)
+
+###############################################################
+
+# retorna o tipo da instrucao J, R, I ou COP1
 def get_type(instruction):
+    
+    # check_exceptions(instruction)
 
     if(instruction[0] == 'j' or instruction[0] == 'jal'):
         return 'j'
@@ -125,14 +169,22 @@ def get_type(instruction):
     elif(instruction[0] in type_i_opcodes):
         return 'i'
 
-    elif(instruction[0] in type_r_funct):
+    elif(instruction[0] in type_r_funct or instruction[0] in special_r_type):
         return 'r'
+
+    elif(instruction[0] in special2_funct):
+        return 'sp2'
     
+    elif(instruction[0][:instruction[0].find('.')] in cop1_funct):
+        return 'cop1'
+
     else: return 'z'
 
 # RETORNA O VALOR EM BINÁRIO DO REGISTRADOR
 def get_register(mask):
     
+    check_register(mask)
+
     if mask[0] == '$':
         
         if mask in register_mask_dict:
@@ -140,14 +192,16 @@ def get_register(mask):
             reg = f'{reg:05b}'
 
         else:
-            reg = f'{int(mask[1:]):05b}'
+            if mask.find('f'):
+                reg = f'{int(mask[2:]):05b}'
+            else:
+                reg = f'{int(mask[1:]):05b}'
 
     return reg
 
 # CONVERTE O CODIGO DE 32 BITS PARA HEXADECIMAL
 def bin_to_hex(bin_code):
 
-    # hex_code = '0x'
     hex_code = ''
     
     aux = ''
@@ -173,40 +227,9 @@ def normalize_inst(instruction):
 
     return aux
 
-# CHECA VALIDADE DA INSTRUÇÃO. CHECA SE ENCONTRA O TIPO DA INSTRUÇÃO E OS REGISTRADORES
-# CASO HAJA ERRO, ENCERRA A EXECUÇÃO DO PROGRAMA, LEVANTANDO UMA EXCERÇÃO
-def check_exceptions(instruction):
+############################################################### INSTRUCOES TIPO J
 
-    try:
-        not_r_type = not (instruction[0] in type_r_funct)
-        not_i_type = not (instruction[0] in type_i_opcodes)
-        not_j_type = not (instruction[0] == 'j' or instruction[0] == 'jal')
-
-        if not_r_type and not_i_type and not_j_type :
-            raise ValueError("Unknown Instruction: " + instruction[0])
-
-    except ValueError as e:
-        print(e)
-        sys.exit(1)
-
-    for reg in instruction[1:] :
-
-        if not reg in register_mask_dict:
-            try:
-                int(reg[1:])
-            except:
-                print("Register not found: " + reg)
-                sys.exit(1)
-
-            try:
-                if int(reg[1:]) < 0 or int(reg[1:]) > 31 :
-                    raise ValueError("Register out of index: " + reg)
-
-            except ValueError as e:
-                print(e)
-                sys.exit(1)
-
-
+# RETORNA O HEX DOS TIPOS J
 def get_j_type_hex(instruction):
 
     if instruction[0] == 'j': 
@@ -224,9 +247,19 @@ def get_j_type_hex(instruction):
     return hex_code
 
 
+############################################################### INSTRUCOES TIPO I
 def is_offset(instruction):
-    return instruction[-1][-1] == ')'
+    return instruction[-1] == ')'
 
+def get_immediate(imm):
+    
+    if is_offset(imm):
+        imm = imm[:imm.find('(')]
+        imm = f'{int(imm):016b}'
+    else:
+        imm = f'{int(imm):016b}'
+
+    return imm
 
 def get_i_type_hex(instruction) :
 
@@ -234,7 +267,12 @@ def get_i_type_hex(instruction) :
 
     rt = get_register(instruction[1])
 
-    if(is_offset(instruction)):
+    imm = get_immediate(instruction[-1])
+
+    if instruction[0] == 'lui':
+        rs = '00000'
+
+    elif(is_offset(instruction[-1])):
 
         rs = instruction[2]
 
@@ -243,16 +281,8 @@ def get_i_type_hex(instruction) :
         rs = rs[ rs.find('(')+1 : rs.rfind(')')]
         rs = get_register(rs)
 
-        # pega o que está antes do primeiro parêntese
-        # no caso: OFFSET(base) ->  OFFSET
-        imm = instruction[2][:instruction[2].find('(')]
-        imm = f'{int(imm):016b}'
-        
-
     else:
         rs = get_register(instruction[2])
-
-        imm = f'{int(instruction[3]):016b}'
 
     bin = opcode + rs + rt + imm
 
@@ -260,17 +290,202 @@ def get_i_type_hex(instruction) :
 
     return hex_code
 
-def get_r_type_hex(instruction):
 
-    opcode = '000000'
+############################################################### INSTRUCOES TIPO R
+
+# ALGUMAS INSTRUCOES ESPECIAIS
+# APESAR DE SEREM DO TIPO R, ELAS TEM UMA ESTRUTURA DIFERENTE
+# POR ISSO FOI FEITO UMA FUNCAO PARA CADA UMA
+# A FUNCAO APENAS RETORNA OS VALORES DOS CAMPOS SEGUINDO A ESTURTURA DAS FUNCOES
+def div(instruction):
+
+    rs = get_register(instruction[1])
+    rt = get_register(instruction[2])
+    rd = '00000'
+    shamt = '00000'
+    funct = '011010'
+
+    return rs, rt, rd, shamt, funct
+
+def jr(instruction):
+
+    rs = get_register(instruction[1])
+    rt = '00000'
+    rd = '00000'
+    hint = '00000'
+    funct = '001000'
+
+    return rs, rt, rd, hint, funct
+
+def jalr(instruction):
+
+    hint = '00000'
+    funct = '001001'
+    rt = '00000'
+
+    if(len(instruction) == 2):
+        rs = get_register(instruction[1])
+        rd = '11111'
+    else:
+        rs = get_register(instruction[2])
+        rd = get_register(instruction[1])
+
+    return rs, rt, rd, hint, funct
+
+def mfhi(instruction):
+
+    rs = '00000'
+    rt = '00000'
+
+    rd = get_register(instruction[1])
+
+    shamt = '00000'
+    funct = '010000'
+
+    return rs, rt, rd, shamt, funct
+
+def mflo(instruction):
+
+    rs = '00000'
+    rt = '00000'
+
+    rd = get_register(instruction[1])
+
+    shamt = '00000'
+    funct = '010010'
+    
+    return rs, rt, rd, shamt, funct
+
+def movn(instruction):
+
     rs = get_register(instruction[2])
     rt = get_register(instruction[3])
     rd = get_register(instruction[1])
     shamt = '00000'
-    funct = type_r_funct[instruction[0]]
+    funct = '001011'
+
+    return rs, rt, rd, shamt, funct
+
+def mult(instruction):
+
+    rs = get_register(instruction[1])
+    rt = get_register(instruction[2])
+    rd = '00000'
+    shamt = '00000'
+    funct = '011000'
+
+    return rs, rt, rd, shamt, funct
+
+def sra(instruction):
+
+    rs = '00000'
+    rt = get_register(instruction[2])
+    rd = get_register(instruction[1])
+    sa = get_register(instruction[3])
+    funct = '000011'
+
+    return rs, rt, rd, sa, funct
+
+def srav(instruction):
+
+    rs = get_register(instruction[3])
+    rt = get_register(instruction[2])
+    rd = get_register(instruction[1])
+    shamt = '00000'
+    funct = '000111'
+
+    return rs, rt, rd, shamt, funct
+
+def teq(instruction):
+
+    rs = get_register(instruction[1])
+    rt = get_register(instruction[2])
+    rd = '00000'
+    shamt = '00000'
+    funct = '110100'
+
+    return rs, rt, rd, shamt, funct
+
+# DICTIONARY TO FUNCTION CALLS
+# FUCNTIONS ABOVE
+special_r_type = {
+
+        'div'   : div,
+        'jr'    : jr,
+        'jalr'  : jalr,
+        'mfhi'  : mfhi,
+        'mflo'  : mflo,
+        'movn'  : movn,
+        'mult'  : mult,
+        'sra'   : sra,
+        'srav'  : srav,
+        'teq'   : teq,
+}
+def get_r_type_hex(instruction):
+
+    opcode = '000000'
+
+    # se a instrucao é do tip o R, mas um dos casos em que nao segue a estrutura padrao
+    # (referidos aqui como special R type)
+    # entao vai chamar a funcao que trata a instrucao especifica
+    # a chamada é administrada pelo dictionary special_r_type
+    if(instruction[0] in special_r_type):
+        rs, rt, rd, shamt, funct = special_r_type[instruction[0]](instruction)
+
+    # caso siga a estrutura padrao do tipo R, entao:
+    else:
+        rs = get_register(instruction[2])
+        rt = get_register(instruction[3])
+        rd = get_register(instruction[1])
+        shamt = '00000'
+        funct = type_r_funct[instruction[0]]
 
     bin = opcode + rs + rt + rd + shamt + funct
     
+    hex_code = bin_to_hex(bin)
+
+    return hex_code
+
+def get_special2_hex(instruction):
+
+    opcode = '011100'
+    funct = special2_funct[instruction[0]]
+    shamt = '00000'
+
+    if instruction[0] == 'clo':
+
+        rd = get_register(instruction[1])
+        rs = get_register(instruction[2])
+        rt = '00000'
+        
+    elif instruction[0] == 'mul':
+
+        rd = get_register(instruction[1])
+        rs = get_register(instruction[2])
+        rt = get_register(instruction[3])
+
+    else:        
+        rs = get_register(instruction[1])
+        rt = get_register(instruction[2])
+        rd = '00000'
+
+    bin = opcode + rs + rt + rd + shamt + funct
+    
+    hex_code = bin_to_hex(bin)
+
+    return hex_code
+
+def get_cop1_hex(instruction):
+
+    opcode = '010001'
+    fmt = '000000'
+    ft = get_register(instruction[3])
+    fs = get_register(instruction[2])
+    fd = get_register(instruction[1])
+    funct = cop1_funct[instruction[0][:instruction[0].find('.')]]
+
+    bin = opcode + fmt + fd + fs + ft + funct
+
     hex_code = bin_to_hex(bin)
 
     return hex_code
@@ -282,8 +497,6 @@ def get_hex(instruction):
 
     type = get_type(instruction)
 
-    # check_exceptions(instruction)
-
     if type == 'j':
         return get_j_type_hex(instruction)
        
@@ -294,24 +507,36 @@ def get_hex(instruction):
 
         return get_r_type_hex(instruction)
     
-    else: return 'ERROR'
+    elif type == 'sp2':
 
+        return get_special2_hex(instruction)
+    
+    elif type == 'cop1':
+        return get_cop1_hex(instruction)
+    
+    else: return 'ERROR'
 
 def main():
 
-    data_head()
-    text_head()
+    # data_head()
+    text_head('output.txt')
     assembled = []
-    with open('test.txt', 'r') as file:
+    with open('test2.txt', 'r') as file:
         for line in file:
 
             instruction = line.split(' ')
 
             assembled.append( (get_hex(instruction)) )
 
-    output = open('output.txt', 'w')
+    output = open('output.txt', 'a')
 
-    for i in assembled:
-        output.write(i + '\n') 
+    for i in range(len(assembled)):
+        output.write( '{:08x}'.format(i) + ' : ' + assembled[i] + ';\n')
 
-main()
+    output.write( '\nEND;\n')
+    output.close()
+
+
+if __name__ == '__main__':
+
+    main()
