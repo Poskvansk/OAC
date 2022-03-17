@@ -1,9 +1,4 @@
-from calendar import different_locale
-from dis import Instruction
 import sys
-from turtle import pen
-
-from cv2 import UMAT_AUTO_STEP
 
 special2_funct = {
     
@@ -90,6 +85,7 @@ register_mask_dict = {
     '$ra': 31
 }
 
+labels_dict = {}
 ###############################################################
 def data_head(file):
     saida = open(file, 'w')
@@ -158,7 +154,7 @@ def check_exceptions(instruction):
 
 ###############################################################
 
-# retorna o tipo da instrucao J, R, I ou COP1
+# retorna o tipo da instrucao J, R, I, COP1 ou PSEUDO
 def get_type(instruction):
     
     # check_exceptions(instruction)
@@ -175,10 +171,16 @@ def get_type(instruction):
     elif(instruction[0] in special2_funct):
         return 'sp2'
     
+    elif(instruction[0] in pseudo_dict):
+        return 'pseudo'
+    
     elif(instruction[0][:instruction[0].find('.')] in cop1_funct):
         return 'cop1'
 
     else: return 'z'
+
+def has_label(instruction):
+    return instruction[0][-1] == ':'
 
 # RETORNA O VALOR EM BINÁRIO DO REGISTRADOR
 def get_register(mask):
@@ -228,22 +230,47 @@ def normalize_inst(instruction):
     return aux
 
 ############################################################### INSTRUCOES TIPO J
+def hex_to_bin(hex_code):
+    print(hex_code)
+    bin_code = ''
+
+    for i in hex_code:
+        dec = int(i,16)
+        bin_code += f'{dec:04b}'
+
+    return bin_code
+
+def get_address(addr):
+
+    if((addr+':') in labels_dict):
+        addr = labels_dict[addr+':']
+
+    elif (addr[:1] == '0x'):
+        addr = addr[1:]
+
+    else:
+        addr = f'{int(addr):04x}'
+
+    return addr
 
 # RETORNA O HEX DOS TIPOS J
 def get_j_type_hex(instruction):
 
     if instruction[0] == 'j': 
         opcode = '000010' 
-
     else:
         opcode = '000011' 
 
-    address = instruction[1]
+    address = get_address(instruction[1])
 
-    bin = opcode + address
+    address = '00400020'
     
-    hex_code = bin_to_hex(bin)
+    address = hex_to_bin(address[1:])
 
+    bin_code = opcode + address[2:]
+
+    hex_code = bin_to_hex(bin_code)
+    
     return hex_code
 
 
@@ -446,6 +473,7 @@ def get_r_type_hex(instruction):
 
     return hex_code
 
+############################################################### INSTRUCOES SPECIAL2
 def get_special2_hex(instruction):
 
     opcode = '011100'
@@ -475,6 +503,7 @@ def get_special2_hex(instruction):
 
     return hex_code
 
+############################################################### INSTRUCOES TIPO COP1
 def get_cop1_hex(instruction):
 
     opcode = '010001'
@@ -490,6 +519,23 @@ def get_cop1_hex(instruction):
 
     return hex_code
 
+
+############################################################### PSEUDO-INSTRUCOES
+def li(instruction):
+
+    return
+
+pseudo_dict = {
+
+    'li':li,
+}
+def get_pseudo(instruction):
+
+    pseudo_dict[instruction[0]](instruction)
+
+    return
+
+###############################################################
 # GERA O HEX DA INSTRUÇÃO
 def get_hex(instruction):
 
@@ -504,11 +550,9 @@ def get_hex(instruction):
         return get_i_type_hex(instruction)
         
     elif type == 'r':
-
         return get_r_type_hex(instruction)
     
     elif type == 'sp2':
-
         return get_special2_hex(instruction)
     
     elif type == 'cop1':
@@ -521,14 +565,23 @@ def main():
     # data_head()
     text_head('output.txt')
     assembled = []
+    inst_list = []
     with open('test2.txt', 'r') as file:
         for line in file:
 
             instruction = line.split(' ')
+            inst_list.append( instruction )
+        file.close()
 
-            assembled.append( (get_hex(instruction)) )
+    for i in range(len(inst_list)):
+        if (has_label(inst_list[i])):
+            labels_dict[inst_list[i][0]] = '{:08x}'.format(i)
+            inst_list[i] = inst_list[i][1:]
+        assembled.append(get_hex(inst_list[i]))
 
     output = open('output.txt', 'a')
+
+    print(labels_dict)
 
     for i in range(len(assembled)):
         output.write( '{:08x}'.format(i) + ' : ' + assembled[i] + ';\n')
