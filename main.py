@@ -55,7 +55,7 @@ def text_head(file):
     saida.close()
 
 ###############################################################
-# IEE 754 FLOATING POINT
+# IEEE 754 FLOATING POINT
 def get_mantissa(num):
 
     mantissa = ''
@@ -76,8 +76,17 @@ def get_mantissa(num):
     else:
         return mantissa
 
-def iee754(num):
+def get_exponent(num):
 
+    exponent = ''
+
+    return exponent
+
+def ieee_normalize(num):
+
+    return
+
+def ieee754(num):
     if(num > 100):
         return
     
@@ -97,7 +106,6 @@ def iee754(num):
         print(mantissa)
 
         exponent = '0'*11
-
 
     return sign + exponent + mantissa
 
@@ -140,12 +148,13 @@ def get_hex(instruction):
 
 def main():
 
-    # data_head()
+    data_head('output.mif')
+    produce_data('test.txt', 'output.mif')
     text_head('output.mif')
     assembled = []
     inst_list = []
     
-    # print(get_mantissa(.9))
+    # print(ieee754(3.9))
 
     with open('test2.txt', 'r') as file:
         for line in file:
@@ -167,7 +176,6 @@ def main():
 
     output.write( '\nEND;\n')
     output.close()
-
 
 if __name__ == '__main__':
 
