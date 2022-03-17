@@ -6,7 +6,20 @@ from cop1 import *
 from misc import *
 
 ###############################################################
+def data_head(file):
+    saida = open(file, 'w')
+    saida.write('DEPTH = 16384;\n')
+    saida.write('WIDTH = 32;\n')
+    saida.write('ADDRESS_RADIX = HEX;\n')
+    saida.write('DATA_RADIX = HEX;\n')
+    saida.write('CONTENT\n')
+    saida.write('BEGIN\n\n')
+    saida.close()
+
 def produce_data(input_file, output_file):
+
+    data_head(output_file)
+
     entrada = open(input_file, 'r')
     saida   = open(output_file, 'a')
 
@@ -23,7 +36,6 @@ def produce_data(input_file, output_file):
             address_hex = hex(address)
             saida.write((str(address_hex).replace('0x', '')).zfill(8) + ' : ')
             saida.write((str(hex(int(linha[i + 2]))).replace('0x', '').zfill(8) + ';' + '\n'))
-            print(linha[i+2]) # 0 é o nome da variavel, 1 é o '.word', os valores comecam a partir de 2
             address = address + 1
 
         linha = entrada.readline()
@@ -32,16 +44,6 @@ def produce_data(input_file, output_file):
 
     saida.write('\nEND;')
     entrada.close()
-    saida.close()
-
-def data_head(file):
-    saida = open(file, 'w')
-    saida.write('DEPTH = 16384;\n')
-    saida.write('WIDTH = 32;\n')
-    saida.write('ADDRESS_RADIX = HEX;\n')
-    saida.write('DATA_RADIX = HEX;\n')
-    saida.write('CONTENT\n')
-    saida.write('BEGIN\n\n')
     saida.close()
 
 def text_head(file):
@@ -100,9 +102,8 @@ def ieee754(num):
             sign = '1'
 
         int_part = bin(int_part)[2:]
-        print(int_part)
-
         mantissa = get_mantissa(dec_part)
+        mantissa = int_part + mantissa
         print(mantissa)
 
         exponent = '0'*11
@@ -148,17 +149,30 @@ def get_hex(instruction):
 
 def main():
 
-    data_head('output.mif')
-    produce_data('test.txt', 'output.mif')
-    text_head('output.mif')
+    # INSIRA O NOME DO ARQUIVO EM file:
+    # file = nome_do_arquivo
+    if len(sys.argv) == 1:
+        file = 'test.txt'
+    else:
+        file = sys.argv[1]
+
+    out_data = file[:file.rfind('.')]+'_data.mif'
+    out_text = file[:file.rfind('.')]+'_text.mif'
+
+    produce_data(file, out_data)
+    text_head(out_text)
+
     assembled = []
     inst_list = []
-    
-    # print(ieee754(3.9))
 
-    with open('test2.txt', 'r') as file:
+    with open(file, 'r') as file:
+        flag = False
+        while(flag == False):
+            line = file.readline()
+            if(line[:-1] == '.text'):
+                flag = True
+
         for line in file:
-
             instruction = line.split(' ')
             inst_list.append( instruction )
         file.close()
@@ -169,7 +183,7 @@ def main():
             inst_list[i] = inst_list[i][1:]
         assembled.append(get_hex(inst_list[i]))
 
-    output = open('output.mif', 'a')
+    output = open(out_text, 'a')
 
     for i in range(len(assembled)):
         output.write( '{:08x}'.format(i) + ' : ' + assembled[i] + ';\n')
