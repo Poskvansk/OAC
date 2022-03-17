@@ -231,7 +231,7 @@ def normalize_inst(instruction):
 
 ############################################################### INSTRUCOES TIPO J
 def hex_to_bin(hex_code):
-    print(hex_code)
+
     bin_code = ''
 
     for i in hex_code:
@@ -249,7 +249,7 @@ def get_address(addr):
         addr = addr[1:]
 
     else:
-        addr = f'{int(addr):04x}'
+        addr = f'{int(addr):08x}'
 
     return addr
 
@@ -263,16 +263,13 @@ def get_j_type_hex(instruction):
 
     address = get_address(instruction[1])
 
-    address = '00400020'
-    
     address = hex_to_bin(address[1:])
-
-    bin_code = opcode + address[2:]
+           
+    bin_code = opcode + address[:-2]
 
     hex_code = bin_to_hex(bin_code)
     
     return hex_code
-
 
 ############################################################### INSTRUCOES TIPO I
 def is_offset(instruction):
@@ -280,6 +277,8 @@ def is_offset(instruction):
 
 def get_immediate(imm):
     
+    # CORRIGIR PARA NEGATIVOS
+
     if is_offset(imm):
         imm = imm[:imm.find('(')]
         imm = f'{int(imm):016b}'
@@ -506,8 +505,15 @@ def get_special2_hex(instruction):
 ############################################################### INSTRUCOES TIPO COP1
 def get_cop1_hex(instruction):
 
+    # GERANDO ERRADO!
+
     opcode = '010001'
-    fmt = '000000'
+    
+    if instruction[0][-1] == 'd':
+        fmt = '10001'
+    if instruction[0][-1] == 's':
+        fmt = '10000'
+    
     ft = get_register(instruction[3])
     fs = get_register(instruction[2])
     fd = get_register(instruction[1])
@@ -580,8 +586,6 @@ def main():
         assembled.append(get_hex(inst_list[i]))
 
     output = open('output.txt', 'a')
-
-    print(labels_dict)
 
     for i in range(len(assembled)):
         output.write( '{:08x}'.format(i) + ' : ' + assembled[i] + ';\n')
