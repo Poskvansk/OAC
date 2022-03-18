@@ -1,15 +1,5 @@
 from misc import *
 ############################################################### INSTRUCOES TIPO J
-def hex_to_bin(hex_code):
-
-    bin_code = ''
-
-    for i in hex_code:
-        dec = int(i,16)
-        bin_code += f'{dec:04b}'
-
-    return bin_code
-
 def get_address(addr):
 
     if((addr+':') in labels_dict):

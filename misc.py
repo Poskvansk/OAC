@@ -211,6 +211,16 @@ def bin_to_hex(bin_code):
 
     return hex_code
 
+def hex_to_bin(hex_code):
+
+    bin_code = ''
+
+    for i in hex_code:
+        dec = int(i,16)
+        bin_code += f'{dec:04b}'
+
+    return bin_code
+
 # RETIRA CARACTERES NÃO DESEJADOS DAS INSTRUÇÕES ( , \n espaços)
 def normalize_inst(instruction):
     

@@ -6,12 +6,14 @@ def is_offset(instruction):
 
 def get_immediate(imm):
     
-    # CORRIGIR PARA NEGATIVOS
 
+    if(imm[1] == 'x'):
+        imm = hex_to_bin(imm[2:])
 
-    if is_offset(imm):
+    elif is_offset(imm):
         imm = imm[:imm.find('(')]
         imm = f'{int(imm):016b}'
+    
     else:
         if(int(imm) < 0):
             imm = two_complement(imm)
@@ -25,6 +27,7 @@ def get_immediate(imm):
 
 def get_i_type_hex(instruction) :
 
+    flag = False
     opcode = type_i_opcodes[instruction[0]]
 
     rt = get_register(instruction[1])
@@ -34,7 +37,12 @@ def get_i_type_hex(instruction) :
     if instruction[0] == 'lui':
         rs = '00000'
 
-    elif(is_offset(instruction[-1])):
+    if len(instruction) == 3:
+        if instruction[0] == 'lui' or instruction[0] == 'ori':
+            rs = '00000'
+            flag = True
+
+    if(is_offset(instruction[-1])):
 
         rs = instruction[2]
 
@@ -43,7 +51,7 @@ def get_i_type_hex(instruction) :
         rs = rs[ rs.find('(')+1 : rs.rfind(')')]
         rs = get_register(rs)
 
-    else:
+    elif (not flag):
         rs = get_register(instruction[2])
 
     bin = opcode + rs + rt + imm

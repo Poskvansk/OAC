@@ -112,15 +112,17 @@ def ieee754(num):
 
 ############################################################### PSEUDO-INSTRUCOES
 def li(instruction):
+    inst1 = get_hex(['lui', '$at', '0x'+instruction[2][2:6]])
+    inst2 = get_hex(['ori', instruction[1], '$at', '0x'+instruction[2][6:]])
+    return inst1, inst2
 
-    return
 
 def get_pseudo(instruction):
 
     if instruction[0] == 'li':
-        li(instruction)
+        inst1, inst2 = li(instruction)
 
-    return
+    return inst1, inst2
 
 ###############################################################
 # GERA O HEX DA INSTRUÇÃO
@@ -144,6 +146,9 @@ def get_hex(instruction):
     
     elif type == 'cop1':
         return get_cop1_hex(instruction)
+
+    elif type == 'pseudo':
+        return get_pseudo(instruction)
     
     else: return 'ERROR'
 
@@ -152,7 +157,7 @@ def main():
     # INSIRA O NOME DO ARQUIVO EM file:
     # file = nome_do_arquivo
     if len(sys.argv) == 1:
-        file = 'test.txt'
+        file = 'example_saida.asm'
     else:
         file = sys.argv[1]
 
@@ -181,7 +186,14 @@ def main():
         if (has_label(inst_list[i])):
             labels_dict[inst_list[i][0]] = '{:08x}'.format(i)
             inst_list[i] = inst_list[i][1:]
-        assembled.append(get_hex(inst_list[i]))
+
+        hex_code = get_hex(inst_list[i])
+
+        if(isinstance(hex_code,tuple)):
+            assembled.append(hex_code[0])
+            assembled.append(hex_code[1])
+        else:
+            assembled.append(get_hex(inst_list[i]))
 
     output = open(out_text, 'a')
 
